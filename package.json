@@ -1,5 +1,5 @@
 {
-  "name": "poc_npm_library",
+  "name": "@pcurich/poc_npm_library",
   "version": "1.0.0",
   "description": "This package is for a POC of a lib in npm",
   "type": "module",
