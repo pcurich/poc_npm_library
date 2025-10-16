@@ -1,0 +1,39 @@
+{
+  "name": "poc_npm_library",
+  "version": "1.0.0",
+  "description": "This package is for a POC of a lib in npm",
+  "type": "module",
+  "main": "lib/index.cjs",
+  "exports": {
+    "import": {
+      "default": "./lib/index.esm.js",
+      "types": "./lib/types/index.d.ts"
+    },
+    "require": {
+      "default": "./lib/index.cjs",
+      "types": "./lib/types/index.d.ts"
+    }
+  },
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "build": "rollup -c"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pedrocurich_bcp/poc_npm_library.git"
+  },
+  "author": "pedro curich",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pedrocurich_bcp/poc_npm_library/issues"
+  },
+  "homepage": "https://github.com/pedrocurich_bcp/poc_npm_library#readme",
+  "devDependencies": {
+    "rollup": "^4.52.4",
+    "rollup-plugin-delete": "^3.0.1",
+    "rollup-plugin-typescript2": "^0.36.0",
+    "typescript": "^5.9.3"
+  }
+}
