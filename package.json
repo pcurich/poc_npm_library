@@ -22,14 +22,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pedrocurich_bcp/poc_npm_library.git"
+    "url": "git+https://github.com/pcurich/poc_npm_library"
   },
   "author": "pedro curich",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/pedrocurich_bcp/poc_npm_library/issues"
+    "url": "https://github.com/pcurich/poc_npm_library"
   },
-  "homepage": "https://github.com/pedrocurich_bcp/poc_npm_library#readme",
+  "homepage": "https://github.com/pcurich/poc_npm_library#readme",
   "devDependencies": {
     "rollup": "^4.52.4",
     "rollup-plugin-delete": "^3.0.1",
