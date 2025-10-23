@@ -18,7 +18,8 @@
     "lib"
   ],
   "scripts": {
-    "build": "rollup -c"
+    "build": "rollup -c",
+    "release-package": "npm run build && npx changeset publish"
   },
   "repository": {
     "type": "git",
@@ -31,6 +32,7 @@
   },
   "homepage": "https://github.com/pcurich/poc_npm_library#readme",
   "devDependencies": {
+    "@changesets/cli": "^2.29.7",
     "rollup": "^4.52.4",
     "rollup-plugin-delete": "^3.0.1",
     "rollup-plugin-typescript2": "^0.36.0",
