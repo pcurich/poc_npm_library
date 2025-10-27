@@ -8,13 +8,37 @@ export class UserRepository extends BaseRepository<UserEntity> implements IRepos
         super(db, 'users', '_id');
     }
 
-    async findByEmail(email: string): Promise<UserEntity[]> {
+    /**
+     * Buscar usuarios por un índice configurable.
+     * @param value valor o keyRange para la búsqueda (ej: email o IDBKeyRange)
+     * @param indexName nombre del índice definido en la migration (por defecto 'email')
+     * @param expectedKeyPath opcional: keyPath esperado para el índice (ej: 'email' o ['a','b'])
+     */
+    async findByIndex(
+        value: IDBValidKey | IDBKeyRange,
+        indexName = 'email',
+        expectedKeyPath?: string | string[]
+    ): Promise<UserEntity[]> {
         return this.dbContext.runTransaction<UserEntity[]>(this.storeName, 'readonly', (store) => {
-            // verifica existencia del índice para evitar excepción si no existe
-            if (!store.indexNames.contains('email')) {
-                throw new Error(`Índice "email" no existe en el store "${this.storeName}"`);
+            if (!store.indexNames.contains(indexName)) {
+                throw new Error(`Índice "${indexName}" no existe en el store "${this.storeName}"`);
             }
-            return store.index('email').getAll(IDBKeyRange.only(email));
+
+            const idx = store.index(indexName);
+
+            if (expectedKeyPath !== undefined) {
+                const actual = idx.keyPath;
+                const normalize = (kp: any) => (Array.isArray(kp) ? kp : kp);
+                const actualJson = JSON.stringify(normalize(actual));
+                const expectedJson = JSON.stringify(Array.isArray(expectedKeyPath) ? expectedKeyPath : expectedKeyPath);
+                if (actualJson !== expectedJson) {
+                    throw new Error(
+                        `KeyPath del índice "${indexName}" no coincide. Esperado: ${expectedJson}, actual: ${actualJson}`
+                    );
+                }
+            }
+
+            return idx.getAll(value as any);
         });
     }
 }

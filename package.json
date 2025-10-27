@@ -19,7 +19,9 @@
   ],
   "scripts": {
     "build": "rollup -c",
-    "release-package": "npm run build && npx changeset publish"
+    "release-package": "npm run build && npx changeset publish",
+    "build:types": "tsc -p tsconfig.json",
+    "pack:tgz": "npm run build && npm run build:types && npm pack"
   },
   "repository": {
     "type": "git",
@@ -33,6 +35,8 @@
   "homepage": "https://github.com/pcurich/poc_npm_library#readme",
   "devDependencies": {
     "@changesets/cli": "^2.29.7",
+    "@rollup/plugin-commonjs": "^28.0.9",
+    "@rollup/plugin-node-resolve": "^16.0.3",
     "@types/node": "^24.9.1",
     "fake-indexeddb": "^6.2.4",
     "rollup": "^4.52.4",
