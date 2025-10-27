@@ -4,7 +4,7 @@ import { Migration, DbContext } from '../src/indexeddb/context/DbContext';
 import { UserService } from '../src/indexeddb/services/UserService';
 import { UserEntity } from '../src/indexeddb/entities/UserEntity';
 
-const initial: Migration = (db) => {
+const initial: Migration = (db: IDBDatabase) => {
     if (!db.objectStoreNames.contains('users')) {
         const s = db.createObjectStore('users', { keyPath: '_id', autoIncrement: true });
         s.createIndex('by_email', 'email', { unique: true });
