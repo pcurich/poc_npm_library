@@ -63,6 +63,11 @@ export class HttpMockService implements IHttpMockService {
             throw new Error('Mock not found');
         }
 
+        try {
+            entity.updateTimestamp();
+        } catch {
+        }
+
         return await this.repo.update(entity);
     }
 
@@ -92,6 +97,23 @@ export class HttpMockService implements IHttpMockService {
     }
 
     /**
+     * Busca mocks por serviceCode usando un índice configurable.
+     *
+     * Por defecto intenta usar indexName = 'serviceCode' y expectedKeyPath = 'serviceCode'.
+     *
+     * @param serviceCode Valor del serviceCode a buscar.
+     * @param indexName Nombre del índice en el objectStore (por defecto 'serviceCode').
+     * @param expectedKeyPath KeyPath esperado del índice (por defecto 'serviceCode').
+     */
+    async findByServiceCode(
+        serviceCode: string,
+        indexName = 'serviceCode',
+        expectedKeyPath: string | string[] = 'serviceCode'
+    ): Promise<HttpMockEntity[]> {
+        return await this.repo.findByIndex(IDBKeyRange.only(serviceCode), indexName, expectedKeyPath);
+    }
+
+    /**
      * Método genérico que delega a HttpMockRepository.findByIndex.
      * Acepta:
      * - value: IDBValidKey | IDBKeyRange (ej: IDBKeyRange.only(['/api', 'GET']) o una clave simple)
@@ -113,6 +135,37 @@ export class HttpMockService implements IHttpMockService {
 
         // Delega en el repositorio; el repo valida existencia del índice y keyPath si se pasa expectedKeyPath.
         return await this.repo.findByIndex(value, indexName, expectedKeyPath);
+    }
+
+    /**
+     * Obtiene el responseBody de un HttpMockEntity por id y lo devuelve casteado al tipo genérico T.
+     *
+     * Comportamiento:
+     * - Busca la entidad por id.
+     * - Si responseBody es string intenta parsearlo como JSON.
+     * - Si el parse falla o responseBody no es string, lo retorna casteado a T.
+     *
+     * @param id Id del mock.
+     * @returns El responseBody casteado a T, o null si no existe la entidad o el responseBody es null/undefined.
+     */
+    async getResponseBodyAs<T>(id: IDBValidKey): Promise<T | null> {
+        const entity = await this.repo.read(id);
+        if (!entity) return null;
+
+        const raw = (entity as any).responseBody;
+        if (raw === undefined || raw === null) return null;
+
+        if (typeof raw === 'string') {
+            try {
+                return JSON.parse(raw) as T;
+            } catch {
+                // si no es JSON válido, devolver el string como T
+                return raw as unknown as T;
+            }
+        }
+
+        // si no es string (ya es objeto), devolver casteado
+        return raw as unknown as T;
     }
 
 }

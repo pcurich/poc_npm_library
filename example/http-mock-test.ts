@@ -25,7 +25,7 @@ async function simulateHttpMockFlow() {
         name: 'Get user mock',
         url: '/api/users/123',
         method: 'GET',
-        status: 200,
+        httpCodeResponseValue: 200,
         responseBody: JSON.stringify({ id: 123, name: 'Pedro' }),
         headers: { 'content-type': 'application/json' },
         delayMs: 0,
