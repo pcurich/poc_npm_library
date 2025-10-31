@@ -1,8 +1,8 @@
 // ...existing code...
 import 'fake-indexeddb/auto'; // polyfill IndexedDB para Node
-import { Migration, DbContext } from '../src/indexeddb/context/DbContext';
-import { UserService } from '../src/indexeddb/services/UserService';
-import { UserEntity } from '../src/indexeddb/entities/UserEntity';
+import { Migration, DbContext } from '../indexeddb/context/DbContext';
+import { UserService } from '../indexeddb/services/UserService';
+import { UserEntity } from '../indexeddb/entities/UserEntity';
 
 const initial: Migration = (db: IDBDatabase) => {
     if (!db.objectStoreNames.contains('users')) {
