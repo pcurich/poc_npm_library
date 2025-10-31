@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'; // polyfill IndexedDB para Node
-import { Migration, DbContext } from '../src/indexeddb/context/DbContext';
-import { HttpMockService } from '../src/indexeddb/services/HttpMockService';
-import { HttpMockEntity } from '../src/indexeddb/entities/HttpMockEntity';
+import { Migration, DbContext } from '../indexeddb/context/DbContext';
+import { HttpMockService } from '../indexeddb/services/HttpMockService';
+import { HttpMockEntity } from '../indexeddb/entities/HttpMockEntity';
 
 /**
  * Migration para crear store de mocks HTTP

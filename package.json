@@ -1,6 +1,6 @@
 {
   "name": "@pcurich/poc_npm_library",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "This package is for a POC of a lib in npm",
   "type": "module",
   "main": "lib/index.cjs",
@@ -21,7 +21,10 @@
     "build": "rollup -c",
     "release-package": "npm run build && npx changeset publish",
     "build:types": "tsc -p tsconfig.json",
-    "pack:tgz": "npm run build && npm run build:types && npm pack"
+    "pack:tgz": "npm run build && npm run build:types && npm pack",
+    "dev:webtest": "ts-node --esm example/http-mock-test.ts",
+    "print-env": "ts-node --esm src/example/print-env.ts",
+    "print-env-cli": "ts-node --esm src/example/cli/print-env.ts"
   },
   "repository": {
     "type": "git",
@@ -37,7 +40,7 @@
     "@changesets/cli": "^2.29.7",
     "@rollup/plugin-commonjs": "^28.0.9",
     "@rollup/plugin-node-resolve": "^16.0.3",
-    "@types/node": "^24.9.1",
+    "@types/node": "^24.9.2",
     "fake-indexeddb": "^6.2.4",
     "rollup": "^4.52.4",
     "rollup-plugin-delete": "^3.0.1",

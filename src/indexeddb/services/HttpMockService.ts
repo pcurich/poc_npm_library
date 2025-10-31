@@ -21,7 +21,9 @@ export class HttpMockService implements IHttpMockService {
      * Devuelve la entidad creada (con _id/id asignado si aplica).
      */
     async createMock(data: Partial<HttpMockEntity>): Promise<HttpMockEntity> {
+        debugger;
         const entity = { ...(data as Partial<HttpMockEntity>) } as HttpMockEntity;
+        
         return await this.repo.create(entity);
     }
 
