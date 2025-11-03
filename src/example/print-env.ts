@@ -1,9 +1,15 @@
-import 'fake-indexeddb/auto'; // opcional para tests en Node que usan indexedDB
-import { printEnv } from '../indexeddb/utils/env';
+import 'fake-indexeddb/auto';
+import { listEnvVariables, printEnv } from '../indexeddb/utils/env';
 
- 
-// Imprime todas las variables (ocultando valores para seguridad)
-printEnv({ hideValues: true });
+function demo() {
+  console.log('--- printEnv() (full) ---');
+  printEnv();
 
-// Imprime solo variables con prefijo VITE_ (ej. Vite)
-printEnv({ prefix: 'VITE_', hideValues: false });
+  console.log('\n--- listEnvVariables() (programmatic) ---');
+  const entries = listEnvVariables();
+  for (const e of entries) {
+    console.log(`${e.key} = ${String(e.value)}`);
+  }
+}
+
+demo();

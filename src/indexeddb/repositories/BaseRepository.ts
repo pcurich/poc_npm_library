@@ -83,7 +83,8 @@ export default abstract class BaseRepository<T> implements IRepository<T> {
             const kp = this.keyPath ?? ((entity as any).id !== undefined ? 'id' : '_id');
             try {
                 (entity as any)[kp] = key;
-            } catch {
+            } catch(_err) {
+                window.console.warn(_err);
                 // no interrumpir si no es asignable
             }
         }

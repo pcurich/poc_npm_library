@@ -1,9 +1,11 @@
 {
-  "name": "@pcurich/poc_npm_library",
-  "version": "1.0.1",
-  "description": "This package is for a POC of a lib in npm",
+  "name": "@pcurich/client-storage",
+  "version": "2.0.0",
+  "description": "Este paquete es una librería npm que abstrae almacenamiento (IndexedDB, local/session/memory storage) y utilidades para entornos (lectura/depuración de variables de entorno).",
   "type": "module",
+  "types": "lib/types/index.d.ts",
   "main": "lib/index.cjs",
+  "module": "lib/index.mjs",
   "exports": {
     "import": {
       "default": "./lib/index.esm.js",
@@ -22,9 +24,8 @@
     "release-package": "npm run build && npx changeset publish",
     "build:types": "tsc -p tsconfig.json",
     "pack:tgz": "npm run build && npm run build:types && npm pack",
-    "dev:webtest": "ts-node --esm example/http-mock-test.ts",
-    "print-env": "ts-node --esm src/example/print-env.ts",
-    "print-env-cli": "ts-node --esm src/example/cli/print-env.ts"
+    "build:examples": "tsc -p tsconfig.build.json && node scripts/fix-import-extensions.js lib",
+    "run:print-env": "npm run build:examples && node --enable-source-maps lib/example/print-env.js"
   },
   "repository": {
     "type": "git",
