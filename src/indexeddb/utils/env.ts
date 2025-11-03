@@ -50,3 +50,14 @@ export function printEnv(options?: { prefix?: string; hideValues?: boolean }): v
     }
     console.groupEnd ? console.groupEnd() : undefined;
 }
+
+/**
+ * Devuelve una lista ordenada con todas las variables de entorno detectadas.
+ * Cada entrada tiene { key, value }.
+ */
+export function listEnvVariables(): Array<{ key: string; value: string | undefined }> {
+    const map = getEnvMap();
+    return Object.keys(map)
+        .sort()
+        .map((k) => ({ key: k, value: map[k] }));
+}

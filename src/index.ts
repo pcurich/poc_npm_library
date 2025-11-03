@@ -15,3 +15,6 @@ export { HttpMockRepository } from './indexeddb/repositories/HttpMockRepository'
 export { HttpMockService } from './indexeddb/services/HttpMockService';
 export { IHttpMockService } from './indexeddb/services/IHttpMockService';
 export { HttpMockEntity } from './indexeddb/entities/HttpMockEntity';
+
+export { printEnv, getEnvMap, listEnvVariables } from './indexeddb/utils/env';
+export { createIndexedDbServices } from './indexeddb/init/createHttpServices';
