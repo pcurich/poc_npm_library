@@ -1,6 +1,6 @@
 {
   "name": "@pcurich/client-storage",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Este paquete es una librería npm que abstrae almacenamiento (IndexedDB, local/session/memory storage) y utilidades para entornos (lectura/depuración de variables de entorno).",
   "type": "module",
   "types": "lib/types/index.d.ts",
@@ -24,7 +24,8 @@
     "release-package": "npm run build && npx changeset publish",
     "build:types": "tsc -p tsconfig.json",
     "pack:tgz": "npm run build && npm run build:types && npm pack",
-    "build:examples": "tsc -p tsconfig.build.json && node scripts/fix-import-extensions.js lib",
+    "build:examples": "tsc -p tsconfig.build.json && node scripts/fix-import-extensions.js lib && node --enable-source-maps lib/example/http-mock-test.js",
+    "build:examples-only": "tsc -p tsconfig.build.json && node scripts/fix-import-extensions.js lib",
     "run:print-env": "npm run build:examples && node --enable-source-maps lib/example/print-env.js"
   },
   "repository": {
