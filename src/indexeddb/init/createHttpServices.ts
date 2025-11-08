@@ -1,59 +1,21 @@
 import { Migration, DbContext } from '../context/DbContext';
 import { HttpMockService } from '../services/HttpMockService';
 import { UserService } from '../services/UserService';
+import { setDbConfig, getDbConfig, DBInitOptions } from '../config';
 
-export type IndexConfig = {
-  name: string;
-  keyPath: string | string[];
-  options?: IDBIndexParameters;
-};
-
-export type StoreConfig = {
-  name: string;
-  keyPath?: string;
-  autoIncrement?: boolean;
-  indexes?: IndexConfig[];
-};
-
-/**
- * Configuración unificada para inicializar la DB y los servicios.
- */
-export type DBInitOptions = {
-  dbName?: string;              // nombre de la base de datos (IndexedDB)
-  version?: number;             // versión de la DB (upgrades)
-  stores?: StoreConfig[];       // definición de objectStores e índices
-  httpOnly?: boolean;           // si true sólo devuelve HttpMockService
-  clearDatabase?: boolean;      // dev: eliminar DB antes de abrir
-};
 
 /**
  * Crea e inicializa los servicios sobre IndexedDB según configuración.
- * Devuelve únicamente los servicios que manejan persistencia (no expone DbContext).
+ * La configuración es obligatoria: el llamador debe proveer dbName, version y stores.
  */
-export async function createIndexedDbServices(opts: DBInitOptions = {}) {
-  const {
-    dbName = ' httpMocks',
-    version = 1,
-    stores = [],
-    httpOnly = false,
-    clearDatabase = false
-  } = opts;
+export async function createIndexedDbServices(opts: DBInitOptions) {
+  setDbConfig(opts);
+  const cfg = getDbConfig();
 
-  // store por defecto para mocks HTTP si no se pasa configuración
-  const defaultHttpStore: StoreConfig = {
-    name: 'httpMocks',
-    keyPath: '_id',
-    autoIncrement: true,
-    indexes: [
-      { name: 'by_url', keyPath: 'url', options: { unique: false } },
-      { name: 'by_url_method', keyPath: ['url', 'method'], options: { unique: false } },
-      { name: 'serviceCode', keyPath: 'serviceCode', options: { unique: false } }
-    ]
-  };
+  const { dbName, version, stores, httpOnly = true, clearDatabase = false } = cfg;
 
-  const effectiveStores = stores.length > 0 ? stores : [defaultHttpStore];
-
-  if (clearDatabase && typeof indexedDB !== 'undefined') {
+// clearDatabase behavior (dev) - only if window/indexedDB is available
+   if (clearDatabase && typeof indexedDB !== 'undefined') {
     await new Promise<void>((res) => {
       const req = indexedDB.deleteDatabase(dbName);
       req.onsuccess = () => res();
@@ -62,8 +24,8 @@ export async function createIndexedDbServices(opts: DBInitOptions = {}) {
     });
   }
 
-  const migration: Migration = (db: IDBDatabase) => {
-    for (const s of effectiveStores) {
+  const migrations: Migration = (db: IDBDatabase) => {
+    for (const s of stores) {
       if (!db.objectStoreNames.contains(s.name)) {
         const store = db.createObjectStore(s.name, { keyPath: s.keyPath, autoIncrement: !!s.autoIncrement });
         if (s.indexes) {
@@ -77,16 +39,17 @@ export async function createIndexedDbServices(opts: DBInitOptions = {}) {
     }
   };
 
-  const ctx = new DbContext(dbName, version, [migration]);
+  const ctx = new DbContext(dbName, version, [migrations]);
+  console.log(`Opening IndexedDB database "${dbName}" (version ${version})...`);
   await ctx.open();
 
   const httpMockService = new HttpMockService(ctx);
   let userService: UserService | undefined;
 
-  if (!httpOnly) {
-    const hasUsers = effectiveStores.some((s) => s.name === 'users');
+   if (!httpOnly) {
+    const hasUsers = stores.some((s) => s.name === 'users');
     if (hasUsers) userService = new UserService(ctx);
   }
-
+  // Return services + ctx (cfg is globally accessible via getDbConfig())
   return { dbContext: ctx, httpMockService, userService };
 }

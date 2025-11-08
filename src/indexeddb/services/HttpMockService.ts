@@ -2,170 +2,156 @@ import { DbContext } from "../context/DbContext";
 import { HttpMockEntity } from "../entities/HttpMockEntity";
 import { HttpMockRepository } from "../repositories/HttpMockRepository";
 import { IHttpMockService } from "./IHttpMockService";
+import { getDbConfig } from "../config";
 
-/**
- * HttpMockService
- *
- * Servicio que orquesta la persistencia y lógica ligera para mocks HTTP.
- * Inyecta DbContext (DIP) y delega la persistencia a HttpMockRepository.
- */
 export class HttpMockService implements IHttpMockService {
-    private repo: HttpMockRepository;
+  private repos = new Map<string, HttpMockRepository>();
+  private defaultStore: string;
+  private dbContext: DbContext;
 
-    constructor(dbContext: DbContext) {
-        this.repo = new HttpMockRepository(dbContext);
+  constructor(dbContext: DbContext, storeName?: string, keyPath?: string) {
+    this.dbContext = dbContext;
+    const cfg = getDbConfig();
+
+    // if caller provided a specific store, use only that; otherwise register all configured stores
+    if (storeName) {
+      this.defaultStore = storeName;
+      const storeCfg = cfg.stores.find(s => s.name === storeName);
+      const kp = keyPath ?? storeCfg?.keyPath;
+      this.repos.set(storeName, new HttpMockRepository(this.dbContext, storeName, kp));
+    } else {
+      // register all stores from config
+      if (!cfg.stores || cfg.stores.length === 0) {
+        throw new Error('HttpMockService: no stores configured');
+      }
+      this.defaultStore = cfg.stores[0].name;
+      for (const s of cfg.stores) {
+        const kp = s.keyPath;
+        this.repos.set(s.name, new HttpMockRepository(dbContext, s.name, kp));
+      }
+    }
+  }
+
+  private getRepo(storeName?: string): HttpMockRepository {
+    const name = storeName ?? this.defaultStore;
+    const repo = this.repos.get(name);
+    if (!repo) throw new Error(`HttpMockService: repository for store "${name}" is not registered`);
+    return repo;
+  }
+
+  async createMock(data: Partial<HttpMockEntity>, storeName?: string): Promise<HttpMockEntity> {
+    const repo = this.getRepo(storeName);
+    const entity = { ...(data as Partial<HttpMockEntity>) } as HttpMockEntity;
+    return await repo.create(entity);
+  }
+
+  async getMockById(id: IDBValidKey, storeName?: string): Promise<HttpMockEntity | null> {
+    return await this.getRepo(storeName).read(id);
+  }
+
+  async updateMock(entity: HttpMockEntity, storeName?: string): Promise<HttpMockEntity> {
+    const repo = this.getRepo(storeName);
+
+    const candidateKeys = ['_id', 'id'];
+    let id: IDBValidKey | undefined;
+
+    for (const k of candidateKeys) {
+      if ((entity as any)[k] !== undefined) {
+        id = (entity as any)[k] as IDBValidKey;
+        break;
+      }
     }
 
-    /**
-     * Crea un nuevo mock HTTP.
-     * Devuelve la entidad creada (con _id/id asignado si aplica).
-     */
-    async createMock(data: Partial<HttpMockEntity>): Promise<HttpMockEntity> {
-        const entity = { ...(data as Partial<HttpMockEntity>) } as HttpMockEntity;
-        return await this.repo.create(entity);
+    if (id === undefined) {
+      const repoKeyPath = (repo as any).keyPath as (string | undefined);
+      if (repoKeyPath && (entity as any)[repoKeyPath] !== undefined) {
+        id = (entity as any)[repoKeyPath] as IDBValidKey;
+      }
     }
 
-    /**
-     * Obtiene un mock por su id.
-     */
-    async getMockById(id: IDBValidKey): Promise<HttpMockEntity | null> {
-        return await this.repo.read(id);
+    if (id === undefined) {
+      throw new Error('Cannot update mock: primary key not found on the entity');
     }
 
-    /**
-     * Actualiza un mock existente.
-     * Intenta extraer la clave primaria (_id | id | repo.keyPath). Valida existencia antes de actualizar.
-     */
-    async updateMock(entity: HttpMockEntity): Promise<HttpMockEntity> {
-        const candidateKeys = ['_id', 'id'];
-        let id: IDBValidKey | undefined;
-
-        for (const k of candidateKeys) {
-            if ((entity as any)[k] !== undefined) {
-                id = (entity as any)[k] as IDBValidKey;
-                break;
-            }
-        }
-
-        if (id === undefined) {
-            const repoKeyPath = (this.repo as any).keyPath as (string | undefined);
-            if (repoKeyPath && (entity as any)[repoKeyPath] !== undefined) {
-                id = (entity as any)[repoKeyPath] as IDBValidKey;
-            }
-        }
-
-        if (id === undefined) {
-            throw new Error('Cannot update mock: primary key not found on the entity');
-        }
-
-        const existing = await this.repo.read(id);
-        if (existing === null || existing === undefined) {
-            throw new Error('Mock not found');
-        }
-
-        try {
-            entity.updateTimestamp();
-        } catch {
-        }
-
-        return await this.repo.update(entity);
+    const existing = await repo.read(id);
+    if (existing === null || existing === undefined) {
+      throw new Error('Mock not found');
     }
 
-    /**
-     * Elimina un mock por id. Devuelve true si fue eliminado, false si no existía.
-     */
-    async deleteMock(id: IDBValidKey): Promise<boolean> {
-        const existing = await this.repo.read(id);
-        if (existing === null || existing === undefined) return false;
-        await this.repo.delete(id);
-        return true;
+    try {
+      entity.updateTimestamp();
+    } catch {}
+
+    return await repo.update(entity);
+  }
+
+  async deleteMock(id: IDBValidKey, storeName?: string): Promise<boolean> {
+    const repo = this.getRepo(storeName);
+    const existing = await repo.read(id);
+    if (existing === null || existing === undefined) return false;
+    await repo.delete(id);
+    return true;
+  }
+
+  async getAllMocks(storeName?: string): Promise<HttpMockEntity[]> {
+    if (storeName) return await this.getRepo(storeName).findAll();
+    // aggregate from all repos
+    const all: HttpMockEntity[] = [];
+    for (const repo of this.repos.values()) {
+      const items = await repo.findAll();
+      all.push(...items);
     }
+    return all;
+  }
 
-    /**
-     * Obtiene todos los mocks.
-     */
-    async getAllMocks(): Promise<HttpMockEntity[]> {
-        return await this.repo.findAll();
+  private getIndexNameForKeyPathForStore(storeName: string, preferredKey: string, fallbackName?: string) {
+    const cfg = getDbConfig();
+    const storeCfg = cfg.stores.find(s => s.name === storeName);
+    if (!storeCfg || !storeCfg.indexes) return fallbackName ?? preferredKey;
+    const idx = storeCfg.indexes.find(i => {
+      if (typeof i.keyPath === 'string') return i.keyPath === preferredKey;
+      if (Array.isArray(i.keyPath)) return i.keyPath.includes(preferredKey);
+      return false;
+    });
+    return idx?.name ?? (storeCfg.indexes[0]?.name ?? (fallbackName ?? preferredKey));
+  }
+
+  async findByUrl(url: string, indexName?: string, expectedKeyPath: string | string[] = 'url', storeName?: string): Promise<HttpMockEntity[]> {
+    const target = storeName ?? this.defaultStore;
+    const idx = indexName ?? this.getIndexNameForKeyPathForStore(target, 'url', 'url');
+    return await this.getRepo(target).findByIndex(IDBKeyRange.only(url), idx, expectedKeyPath);
+  }
+
+  async findByServiceCode(serviceCode: string, indexName?: string, expectedKeyPath: string | string[] = 'serviceCode', storeName?: string): Promise<HttpMockEntity[]> {
+    const target = storeName ?? this.defaultStore;
+    const idx = indexName ?? this.getIndexNameForKeyPathForStore(target, 'serviceCode', 'serviceCode');
+    return await this.getRepo(target).findByIndex(IDBKeyRange.only(serviceCode), idx, expectedKeyPath);
+  }
+
+  async findByIndex(value: IDBValidKey | IDBKeyRange, indexName?: string, expectedKeyPath?: string | string[], storeName?: string): Promise<HttpMockEntity[]> {
+    const target = storeName ?? this.defaultStore;
+    if (Array.isArray(value)) {
+      return await this.getRepo(target).findByIndex(IDBKeyRange.only(value as unknown as IDBValidKey), indexName ?? undefined, expectedKeyPath);
     }
+    return await this.getRepo(target).findByIndex(value, indexName ?? undefined, expectedKeyPath);
+  }
 
-    /**
-     * Busca mocks por URL usando un índice configurable.
-     * Por defecto indexName = 'url' y expectedKeyPath = 'url'.
-     */
-    async findByUrl(url: string, indexName = 'url', expectedKeyPath: string | string[] = 'url'): Promise<HttpMockEntity[]> {
-        return await this.repo.findByIndex(IDBKeyRange.only(url), indexName, expectedKeyPath);
-    }
+  async getResponseBodyAs<T>(id: IDBValidKey, storeName?: string): Promise<T | null> {
+    const repo = this.getRepo(storeName);
+    const entity = await repo.read(id);
+    if (!entity) return null;
 
-    /**
-     * Busca mocks por serviceCode usando un índice configurable.
-     *
-     * Por defecto intenta usar indexName = 'serviceCode' y expectedKeyPath = 'serviceCode'.
-     *
-     * @param serviceCode Valor del serviceCode a buscar.
-     * @param indexName Nombre del índice en el objectStore (por defecto 'serviceCode').
-     * @param expectedKeyPath KeyPath esperado del índice (por defecto 'serviceCode').
-     */
-    async findByServiceCode(
-        serviceCode: string,
-        indexName = 'serviceCode',
-        expectedKeyPath: string | string[] = 'serviceCode'
-    ): Promise<HttpMockEntity[]> {
-        return await this.repo.findByIndex(IDBKeyRange.only(serviceCode), indexName, expectedKeyPath);
-    }
+    const raw = (entity as any).responseBody;
+    if (raw === undefined || raw === null) return null;
 
-    /**
-     * Método genérico que delega a HttpMockRepository.findByIndex.
-     * Acepta:
-     * - value: IDBValidKey | IDBKeyRange (ej: IDBKeyRange.only(['/api', 'GET']) o una clave simple)
-     * - indexName: nombre del índice (ej: 'by_url_method')
-     * - expectedKeyPath: keyPath esperado para validación (ej: ['url','method'])
-     *
-     * Permite buscar usando índices compuestos pasando un array como clave dentro de IDBKeyRange.only(...)
-     */
-    async findByIndex(
-        value: IDBValidKey | IDBKeyRange,
-        indexName = 'by_url',
-        expectedKeyPath?: string | string[]
-    ): Promise<HttpMockEntity[]> {
-        // Si el usuario pasó una clave compuesta como array (no envuelta en IDBKeyRange),
-        // podemos aceptar también array directo y envolverlo en IDBKeyRange.only.
-        if (Array.isArray(value)) {
-            return await this.repo.findByIndex(IDBKeyRange.only(value as unknown as IDBValidKey), indexName, expectedKeyPath);
-        }
-
-        // Delega en el repositorio; el repo valida existencia del índice y keyPath si se pasa expectedKeyPath.
-        return await this.repo.findByIndex(value, indexName, expectedKeyPath);
-    }
-
-    /**
-     * Obtiene el responseBody de un HttpMockEntity por id y lo devuelve casteado al tipo genérico T.
-     *
-     * Comportamiento:
-     * - Busca la entidad por id.
-     * - Si responseBody es string intenta parsearlo como JSON.
-     * - Si el parse falla o responseBody no es string, lo retorna casteado a T.
-     *
-     * @param id Id del mock.
-     * @returns El responseBody casteado a T, o null si no existe la entidad o el responseBody es null/undefined.
-     */
-    async getResponseBodyAs<T>(id: IDBValidKey): Promise<T | null> {
-        const entity = await this.repo.read(id);
-        if (!entity) return null;
-
-        const raw = (entity as any).responseBody;
-        if (raw === undefined || raw === null) return null;
-
-        if (typeof raw === 'string') {
-            try {
-                return JSON.parse(raw) as T;
-            } catch {
-                // si no es JSON válido, devolver el string como T
-                return raw as unknown as T;
-            }
-        }
-
-        // si no es string (ya es objeto), devolver casteado
+    if (typeof raw === 'string') {
+      try {
+        return JSON.parse(raw) as T;
+      } catch {
         return raw as unknown as T;
+      }
     }
 
+    return raw as unknown as T;
+  }
 }

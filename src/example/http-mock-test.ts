@@ -1,76 +1,65 @@
-import 'fake-indexeddb/auto'; // polyfill IndexedDB para Node
-import { Migration, DbContext } from '../indexeddb/context/DbContext';
-import { HttpMockService } from '../indexeddb/services/HttpMockService';
+import 'fake-indexeddb/auto';
+import { createIndexedDbServices } from '../indexeddb/init/createHttpServices';
 import { HttpMockEntity } from '../indexeddb/entities/HttpMockEntity';
 
 /**
- * Migration para crear store de mocks HTTP
+ * Ejemplo actualizado que usa createIndexedDbServices(...) y la configuración
+ * global obligatoria. Permite probar los cambios en HttpMockService/Repository.
  */
-const initial: Migration = (db: IDBDatabase) => {
-    if (!db.objectStoreNames.contains('http_mocks')) {
-        const s = db.createObjectStore('http_mocks', { keyPath: '_id', autoIncrement: true });
-        s.createIndex('by_url', 'url', { unique: false });
-        // índice compuesto url + method
-        s.createIndex('by_url_method', ['url', 'method'], { unique: false });
-    }
-};
-
 async function simulateHttpMockFlow() {
-    const ctx = new DbContext('poc_npm_library', 1, [initial]);
-    await ctx.open();
-    const svc = new HttpMockService(ctx);
+  // Configuración requerida por la librería (obligatoria)
+  const cfg = {
+    dbName: 'poc_npm_library',
+    version: 1,
+    stores: [
+      {
+        name: 'http_mocks',
+        keyPath: '_id',
+        autoIncrement: true,
+        indexes: [
+          { name: 'by_url', keyPath: 'url' },
+          { name: 'by_url_method', keyPath: ['url', 'method'] }
+        ]
+      }
+    ],
+    httpOnly: false,
+    clearDatabase: true // para pruebas, borra DB al iniciar
+  };
 
-    console.log('--- Crear mock ---');
-    const created = await svc.createMock({
-        name: 'Get user mock',
-        url: '/api/users/123',
-        method: 'GET',
-        httpCodeResponseValue: 200,
-        responseBody: JSON.stringify({ id: 123, name: 'Pedro' }),
-        headers: { 'content-type': 'application/json' },
-        delayMs: 0,
-        active: true
-    } as Partial<HttpMockEntity>);
-    console.log('Creado:', created);
+  // IMPORTANT: call createIndexedDbServices so setDbConfig(opts) runs before services are created
+  const { dbContext, httpMockService } = await createIndexedDbServices(cfg);
 
-    const id = (created as any)._id ?? (created as any).id;
-    console.log('ID generado:', id);
+  console.log('--- Crear mock ---');
+  const created = await httpMockService.createMock({
+    name: 'Get user mock',
+    url: '/api/users/123',
+    method: 'GET',
+    httpCodeResponseValue: 200,
+    responseBody: JSON.stringify({ id: 123, name: 'Pedro' }),
+    headers: { 'content-type': 'application/json' },
+    delayMs: 0,
+    active: true
+  } as Partial<HttpMockEntity>);
+  console.log('Creado:', created);
 
-    console.log('--- Leer mock por id ---');
-    const fetched = id !== undefined ? await svc.getMockById(id) : null;
-    console.log('Leído:', fetched);
+  const id = (created as any)._id ?? (created as any).id;
+  console.log('ID generado:', id);
 
-    console.log('--- Actualizar mock ---');
-    if (fetched) {
-        fetched.responseBody = JSON.stringify({ id: 123, name: 'Pedro Updated' });
-        const updated = await svc.updateMock(fetched);
-        console.log('Actualizado:', updated);
-    }
+  console.log('--- Leer mock por id ---');
+  const fetched = id !== undefined ? await httpMockService.getMockById(id) : null;
+  console.log('Leído:', fetched);
 
-    console.log('--- Buscar por URL ---');
-    const byUrl = await svc.findByUrl('/api/users/123', 'by_url', 'url');
-    console.log('Resultados por URL:', byUrl);
+  console.log('--- Estado final: todos los mocks ---');
+  const all = await httpMockService.getAllMocks();
+  console.log('Todos:', all);
 
-    console.log('--- Buscar por URL+METHOD (índice compuesto) ---');
-    const byUrlMethod = await svc.findByIndex(
-        IDBKeyRange.only(['/api/users/123', 'GET']),
-        'by_url_method',
-        ['url', 'method']
-    );
-    console.log('Resultados por URL+METHOD:', byUrlMethod);
-
-    console.log('--- Eliminar mock ---');
-    if (id !== undefined) {
-        const deleted = await svc.deleteMock(id);
-        console.log('Eliminado:', deleted);
-    }
-
-    console.log('--- Estado final: todos los mocks ---');
-    const all = await svc.getAllMocks();
-    console.log('Todos:', all);
+  // Cierra contexto si tu DbContext expone close (opcional)
+  try {
+    await (dbContext as any).close?.();
+  } catch {}
 }
 
 simulateHttpMockFlow().catch(err => {
-    console.error('Error en la simulación HTTP mock:', err);
-    process.exit(1);
+  console.error('Error en la simulación HTTP mock:', err);
+  process.exit(1);
 });
