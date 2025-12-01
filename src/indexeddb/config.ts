@@ -1,24 +1,4 @@
-export type IndexConfig = {
-  name: string;
-  keyPath: string | string[];
-  options?: IDBIndexParameters;
-};
-
-export type StoreConfig = {
-  name: string;
-  keyPath?: string;
-  autoIncrement?: boolean;
-  indexes?: IndexConfig[];
-};
-
-export type DBInitOptions = {
-  dbName: string;
-  version: number;
-  stores: StoreConfig[];
-  httpOnly?: boolean;
-  clearDatabase?: boolean;
-};
-
+import { DBInitOptions }  from './utils/inspect-db-structure';
 let _dbConfig: DBInitOptions | null = null;
 
 export function setDbConfig(opts: DBInitOptions) {
@@ -34,7 +14,7 @@ export function setDbConfig(opts: DBInitOptions) {
   if (!Array.isArray(opts.stores) || opts.stores.length === 0) {
     throw new Error('stores is required and must be a non-empty array');
   }
-  _dbConfig = { ...opts, httpOnly: !!opts.httpOnly, clearDatabase: !!opts.clearDatabase };
+  _dbConfig = { ...opts };
 }
 
 export function getDbConfig(): DBInitOptions {
@@ -49,14 +29,3 @@ export function isDbConfigInitialized(): boolean {
 export function clearDbConfig() {
   _dbConfig = null;
 }
-
-const defaultHttpStore: StoreConfig = {
-    name: 'httpMocks',
-    keyPath: '_id',
-    autoIncrement: true,
-    indexes: [
-      { name: 'by_url', keyPath: 'url', options: { unique: false } },
-      { name: 'by_url_method', keyPath: ['url', 'method'], options: { unique: false } },
-      { name: 'serviceCode', keyPath: 'serviceCode', options: { unique: false } }
-    ]
-  };

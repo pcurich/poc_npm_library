@@ -1,93 +1,44 @@
-# poc_npm_library
+# @pcurich/client-storage-indexeddb
 
-POC de una pequeña librería/ORM sobre IndexedDB. Esta documentación explica la arquitectura, conceptos clave de IndexedDB, la configuración y el uso de los componentes expuestos.
+Librería NPM que abstrae el almacenamiento en IndexedDB con un enfoque tipo ORM, compatible con Node (usando fake-indexeddb) y navegadores modernos.
 
 ## Resumen
 
-La librería provee:
+- Abstracción de acceso a IndexedDB (`DbContext`, `IDbContext`).
+- Repositorios genéricos y específicos (`BaseRepository`, `HttpMockRepository`).
+- Servicios de negocio (`HttpMockService`).
+- Inicializador configurable (`createIndexedDbServices`).
+- Utilidades para inspección y migración de estructura.
+- Ejemplos y tests con `fake-indexeddb`.
 
-- Abstracción de acceso a IndexedDB (DbContext / IDbContext).
-- Repositorios genéricos y específicos (BaseRepository, UserRepository, HttpMockRepository).
-- Servicios de negocio (UserService, HttpMockService).
-- Inicializador configurable (createIndexedDbServices).
-- Utilidades (env, errores) y ejemplos para pruebas con fake-indexeddb.
+## Instalación
 
-## Conceptos clave de IndexedDB
-
-- Base de datos (DB): contenedor con nombre y versión.
-- ObjectStore (store): equivalente conceptual a una tabla/colección; tiene `name`, `keyPath` y `autoIncrement`.
-- Índices: secundarios creados con `createIndex(name, keyPath, options)` — pueden ser simples o compuestos (array). Opciones: `unique`, `multiEntry`.
-- Migraciones: cambios en stores/índices se hacen en `onupgradeneeded`; para aplicar cambios hay que incrementar la versión o borrar la DB en desarrollo.
-
-## Estructura propuesta (principal)
-
-``` tpl
-src/
-  index.ts
-  indexeddb/
-    context/         # IDbContext, DbContext
-    init/            # createIndexedDbServices.ts (inicializador configurable)
-    migrations/      # migrations opcionales
-    entities/        # BaseEntity, UserEntity, HttpMockEntity
-    repositories/    # BaseRepository, HttpMockRepository, UserRepository
-    services/        # HttpMockService, UserService + interfaces
-  utils/             # env.ts, errors.ts, validators.ts
-  example/           # user-test.ts, http-mock-test.ts, print-env.ts
-rollup.config.js
-tsconfig.json
-package.json
-README.md
+```sh
+npm install @pcurich/client-storage-indexeddb
 ```
 
-## Componentes y responsabilidades
-
-- DbContext / IDbContext: abrir DB, ejecutar transacciones promisificadas y aplicar migrations.
-- BaseRepository`<T>`: CRUD genérico; asigna claves generadas (`add`/`put`) a la entidad.
-- Repositorios concretos: queries por índices (`findByIndex`).
-- Servicios (UserService / HttpMockService): lógica de negocio, validaciones ligeras, actualización de `updatedAt` antes de `update`, métodos de alto nivel (create/get/update/delete/findByIndex/getResponseBodyAs`<T>`).
-- createIndexedDbServices(opts): función pública que recibe configuración unificada (dbName, version, stores[], httpOnly, clearDatabase) y devuelve los servicios inicializados.
-
-## Interfaz de inicialización (DBInitOptions)
-
-Pasa un único objeto con la configuración de la DB y los stores:
+## Uso rápido
 
 ```ts
-type IndexConfig = { name: string; keyPath: string | string[]; options?: IDBIndexParameters; };
-type StoreConfig = { name: string; keyPath?: string; autoIncrement?: boolean; indexes?: IndexConfig[]; };
+import 'fake-indexeddb/auto'; // Solo en Node/testing
+import { createIndexedDbServices } from '@pcurich/client-storage-indexeddb';
 
-const opts = {
-  dbName: 'poc_test_db',
-  version: 1,
-  clearDatabase: true,
-  httpOnly: true, // solo se expone el servicio HttpMockService
+const { httpMockService } = await createIndexedDbServices({
+  dbName: 'app',
+  version: 2,
   stores: [
     {
       name: 'httpMocks',
-      keyPath: '_id',
+      keyPath: 'id',
       autoIncrement: true,
       indexes: [
-        { name: 'by_url', keyPath: 'url', options: { unique: false }},
-        { name: 'by_url_method', keyPath: ['url','method'], options: { unique: false }},
-        { name: 'serviceCode', keyPath: 'serviceCode', options: { unique: false }}
+        { name: 'by_url', keyPath: 'url', options: { unique: false } },
+        { name: 'by_url_method', keyPath: ['url', 'method'], options: { unique: false } },
+        { name: 'serviceCode', keyPath: 'serviceCode', options: { unique: false } }
       ]
     }
   ]
-};
-```
-
-Uso:
-
-```ts
-const { httpMockService } = await createIndexedDbServices(opts);
-```
-
-## Ejemplo rápido (Node + fake-indexeddb)
-
-```ts
-import 'fake-indexeddb/auto';
-import { createIndexedDbServices } from './indexeddb/init/createServices';
-
-const { httpMockService } = await createIndexedDbServices({ dbName: 'app', version: 2, httpOnly: true });
+});
 
 await httpMockService.createMock({
   serviceCode: 'SVC1',
@@ -99,29 +50,92 @@ await httpMockService.createMock({
 });
 ```
 
-## Tipos TypeScript
+## API principal
 
-- Generar y publicar `.d.ts` recomendado.
-- Si el consumidor ve `TS7016`, habilitar `declaration` en tsconfig y publicar `lib/types`, o usar un stub `declare module`.
+### Inicialización
 
-## Errores comunes y soluciones
+```ts
+import { createIndexedDbServices } from '@pcurich/client-storage-indexeddb';
 
-- NotFoundError: store not found — verificar migration y versión, o usar `clearDatabase: true` en dev para eliminar DB antigua antes de iniciar.
-- Unknown file extension ".ts": usar `ts-node` para ejecutar .ts o compilar con `tsc` antes de `node`.
+const { dbContext, httpMockService } = await createIndexedDbServices({
+  dbName: 'mydb',
+  version: 1,
+  stores: [
+    {
+      name: 'httpMocks',
+      keyPath: 'id',
+      autoIncrement: true,
+      indexes: [
+        { name: 'by_url', keyPath: 'url', options: { unique: false } }
+      ]
+    }
+  ]
+});
+```
 
-## Convenciones recomendadas
+### Tipos de configuración
 
-- Nombres de stores: coherentes (`httpMocks`, `users`).
-- KeyPath por defecto: `_id` (autoIncrement true). Soportar `id` como alias.
-- Índices: prefijar `by_` para búsquedas (`by_url`, `by_email`).
-- Migrations: versionar y documentar cambios.
+```ts
+type IndexConfig = { name: string; keyPath: string | string[]; options?: IDBIndexParameters; };
+type StoreConfig = { name: string; keyPath?: string; autoIncrement?: boolean; indexes?: IndexConfig[]; };
+type DBInitOptions = { dbName: string; version: number; stores: StoreConfig[]; };
+```
 
-## Buenas prácticas de uso
+### Métodos y servicios
 
-- Mantener repositorios y servicios responsables de validación y shape de entidades.
-- Evitar exponer secretos en variables de entorno para código cliente.
-- Incrementar versión DB para aplicar migrations; en desarrollo usar `clearDatabase: true` si se requiere reset.
+- `createIndexedDbServices(cfg?: DBInitOptions)`: Inicializa la base y servicios.
+- `createDefaultIndexedDb(cfg?: DBInitOptions)`: Solo inicializa la base.
+- `getIndexedDbConfig()`: Inspecciona la estructura actual.
+- `HttpMockService`: CRUD y búsquedas por índice.
+
+## Ejemplo de test con fake-indexeddb
+
+```ts
+import 'fake-indexeddb/auto';
+import { createIndexedDbServices } from '@pcurich/client-storage-indexeddb';
+
+describe('httpMockService', () => {
+  it('Should create and get a mock', async () => {
+    const { httpMockService } = await createIndexedDbServices({
+      dbName: 'testdb',
+      version: 1,
+      stores: [
+        {
+          name: 'httpMocks',
+          keyPath: 'id',
+          autoIncrement: true,
+          indexes: [{ name: 'by_url', keyPath: 'url', options: { unique: false } }]
+        }
+      ]
+    });
+    const created = await httpMockService.createMock({ url: '/api', method: 'GET', serviceCode: 'S1' });
+    const found = await httpMockService.getMockById(created.id);
+    expect(found?.url).toBe('/api');
+  });
+});
+```
+
+## Buenas prácticas
+
+- Usa `clearDatabase: true` en desarrollo para evitar conflictos de versiones.
+- Versiona tu base de datos al cambiar stores o índices.
+- Publica los tipos `.d.ts` para mejor DX en TypeScript.
+- Usa `npm run pack:tgz` para probar localmente antes de publicar.
+
+## Scripts útiles
+
+- `npm run build`: Compila la librería.
+- `npm run test`: Ejecuta los tests con cobertura.
+- `npm run pack:tgz`: Genera un `.tgz` instalable localmente.
+- `npm publish --access public`: Publica en npm.
+
+## Cambios recientes
+
+- Estructura modular y cobertura de tests >90%.
+- Soporte para múltiples stores e índices.
+- Ejemplos y tests con fake-indexeddb.
+- Exportación de tipos y configuración flexible.
 
 ---
 
-Para cambios en stores/índices, editar `src/indexeddb/init/createServices.ts` (o pasar `stores` en la configuración) y aumentar la versión o borrar la DB en desarrollo.
+Para detalles avanzados, revisa los archivos en `src/indexeddb/` y los ejemplos en `src/example/`.

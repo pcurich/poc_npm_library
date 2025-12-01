@@ -1,8 +1,7 @@
 // ...existing code...
 import 'fake-indexeddb/auto'; // polyfill IndexedDB para Node
-import { Migration, DbContext } from '../indexeddb/context/DbContext';
-import { UserService } from '../indexeddb/services/UserService';
-import { UserEntity } from '../indexeddb/entities/UserEntity';
+import { Migration, DbContext } from '../indexeddb/context/db-context';
+import { HttpMockService } from '../indexeddb/services/http-mock-service';
 
 const initial: Migration = (db: IDBDatabase) => {
     if (!db.objectStoreNames.contains('users')) {
@@ -14,39 +13,48 @@ const initial: Migration = (db: IDBDatabase) => {
 async function simulateWebApp() {
     const ctx = new DbContext('poc_npm_library', 1, [initial]);
     await ctx.open();
-    const userService = new UserService(ctx);
+    const mockService = new HttpMockService(ctx);
 
-    console.log('--- Simulación: crear usuario ---');
-    const created = await userService.createUser({ name: 'Pedro', email: 'pedro@example.com' } as Partial<UserEntity>);
-    console.log('Creado:', created);
+    console.log('--- Simulación: crear mock HTTP ---');
+    const created = await mockService.createMock({
+        serviceCode: 'USER_LOGIN',
+        url: '/login',
+        method: 'POST',
+        responseBody: JSON.stringify({ token: 'abc123' }),
+        httpCodeResponseValue: 200
+    });
+    console.log('Mock creado:', created);
 
     const id = (created as any)._id ?? (created as any).id;
     console.log('ID generado:', id);
 
-    console.log('--- Simulación: leer usuario por id ---');
-    const fetched = id !== undefined ? await userService.getUserById(id) : null;
-    console.log('Leído:', fetched);
+    console.log('--- Simulación: leer mock por id ---');
+    const fetched = id !== undefined ? await mockService.getMockById(id) : null;
+    console.log('Mock leído:', fetched);
 
-    console.log('--- Simulación: actualizar usuario ---');
+    console.log('--- Simulación: actualizar mock ---');
     if (fetched) {
-        fetched.name = 'Pedro Updated';
-        const updated = await userService.updateUser(fetched);
-        console.log('Actualizado:', updated);
+        fetched.responseBody = JSON.stringify({ token: 'xyz789' });
+        const updated = await mockService.updateMock(fetched);
+        console.log('Mock actualizado:', updated);
     }
 
-    console.log('--- Simulación: buscar por email ---');
-    const byEmail = await userService.findByEmail('pedro@example.com');
-    console.log('Resultados por email:', byEmail);
+    console.log('--- Simulación: buscar por serviceCode ---');
+    const byServiceCode = await mockService.findByServiceCode('USER_LOGIN');
+    console.log('Resultados por serviceCode:', byServiceCode);
 
-    console.log('--- Simulación: eliminar usuario ---');
+    console.log('--- Simulación: eliminar mock ---');
     if (id !== undefined) {
-        const deleted = await userService.deleteUser(id);
-        console.log('Eliminado:', deleted);
+        await mockService.deleteMock(id);
+        console.log('Mock eliminado:', id);
     }
 
-    console.log('--- Estado final: todos los usuarios ---');
-    const all = await userService.getAllUsers();
-    console.log('Todos:', all);
+    console.log('--- Estado final: todos los mocks ---');
+    const all = await mockService.getAllMocks();
+    console.log('Todos los mocks:', all);
+
+    // Cierra la conexión al finalizar
+    await ctx.close();
 }
 
 simulateWebApp().catch(err => {
