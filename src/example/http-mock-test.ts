@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
-import { createIndexedDbServices } from '../indexeddb/init/createHttpServices';
-import { HttpMockEntity } from '../indexeddb/entities/HttpMockEntity';
+import { createIndexedDbServices } from '../indexeddb/init/indexeddb-init';
+import { HttpMockEntity } from '../indexeddb/entities/http-mock-entity';
 
 /**
  * Ejemplo actualizado que usa createIndexedDbServices(...) y la configuración
