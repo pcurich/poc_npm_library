@@ -1,9 +1,11 @@
 {
-  "name": "@pcurich/poc_npm_library",
-  "version": "1.0.0",
-  "description": "This package is for a POC of a lib in npm",
+  "name": "@pcurich/client-storage-indexeddb",
+  "version": "3.0.1",
+  "description": "Este paquete es una librería npm que abstrae almacenamiento (IndexedDB).",
   "type": "module",
+  "types": "lib/types/index.d.ts",
   "main": "lib/index.cjs",
+  "module": "lib/index.mjs",
   "exports": {
     "import": {
       "default": "./lib/index.esm.js",
@@ -18,7 +20,14 @@
     "lib"
   ],
   "scripts": {
-    "build": "rollup -c"
+    "build": "rollup -c",
+    "release-package": "npm run build && npx changeset publish",
+    "build:types": "tsc -p tsconfig.json",
+    "pack:tgz": "npm run build && npm run build:types && npm pack",
+    "build:examples": "tsc -p tsconfig.build.json && node scripts/fix-import-extensions.js lib && node --enable-source-maps lib/example/indexeddb-init-test.js",
+    "build:examples-only": "tsc -p tsconfig.build.json && node scripts/fix-import-extensions.js lib",
+    "run:print-env": "npm run build:examples && node --enable-source-maps lib/example/print-env.js",
+    "test": "jest --coverage"
   },
   "repository": {
     "type": "git",
@@ -31,9 +40,19 @@
   },
   "homepage": "https://github.com/pcurich/poc_npm_library#readme",
   "devDependencies": {
+    "@changesets/cli": "^2.29.7",
+    "@rollup/plugin-commonjs": "^28.0.9",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.9.2",
+    "fake-indexeddb": "^6.2.5",
+    "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.2.0",
     "rollup": "^4.52.4",
     "rollup-plugin-delete": "^3.0.1",
     "rollup-plugin-typescript2": "^0.36.0",
+    "ts-jest": "^29.4.5",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
 }
