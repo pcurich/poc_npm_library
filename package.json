@@ -20,7 +20,8 @@
     "lib"
   ],
   "scripts": {
-    "build": "rollup -c",
+    "prebuild": "node scripts/generate-script-content.js",
+    "build": "npm run prebuild && rollup -c && tsc -p tsconfig.json",
     "release-package": "npm run build && npx changeset publish",
     "build:types": "tsc -p tsconfig.json",
     "pack:tgz": "npm run build && npm run build:types && npm pack",
@@ -49,6 +50,7 @@
     "jest": "^30.2.0",
     "jest-environment-jsdom": "^30.2.0",
     "rollup": "^4.52.4",
+    "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-delete": "^3.0.1",
     "rollup-plugin-typescript2": "^0.36.0",
     "ts-jest": "^29.4.5",

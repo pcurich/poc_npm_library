@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - injectHttpMockManagerInline</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .test-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .test-section h2 {
+            color: #333;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-badge.pending {
+            background: #ffc107;
+            color: #856404;
+        }
+
+        .status-badge.success {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-badge.error {
+            background: #dc3545;
+            color: white;
+        }
+
+        .test-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .results {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .results h3 {
+            color: #333;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+        }
+
+        .result-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            background: white;
+            border-radius: 6px;
+            border-left: 3px solid #28a745;
+        }
+
+        .result-item.error {
+            border-left-color: #dc3545;
+        }
+
+        .result-item strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .result-item code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        #mock-manager-container {
+            margin-top: 20px;
+            min-height: 100px;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info-box h4 {
+            color: #004085;
+            margin-bottom: 10px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            color: #004085;
+        }
+
+        .info-box li {
+            margin-bottom: 5px;
+        }
+
+        .loader {
+            display: none;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        .loader.active {
+            display: block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div #customElement></div>
+        <div class="header">
+            <h1>🧪 Test: injectHttpMockManagerInline</h1>
+            <p>Prueba de inyección inline del HTTP Mock Manager usando el bundle embebido en la librería</p>
+        </div>
+
+        <div class="test-section">
+            <h2>
+                📋 Información de la Prueba
+                <span class="status-badge pending" id="status-badge">Pendiente</span>
+            </h2>
+
+            <div class="info-box">
+                <h4>📝 Objetivo:</h4>
+                <ul>
+                    <li>Probar el método <code>injectHttpMockManagerInline()</code></li>
+                    <li>Verificar que el bundle de 357KB se inyecta correctamente</li>
+                    <li>Confirmar que el custom element <code>&lt;http-mock-manager&gt;</code> se crea</li>
+                    <li>Validar que no hay errores en la inyección inline</li>
+                </ul>
+            </div>
+
+            <div class="test-controls">
+                <button class="btn btn-primary" onclick="runInlineTest()">
+                    🚀 Ejecutar Test Inline
+                </button>
+                <button class="btn btn-success" onclick="checkInjection()">
+                    🔍 Verificar Inyección
+                </button>
+                <button class="btn btn-danger" onclick="clearTest()">
+                    🗑️ Limpiar Test
+                </button>
+                <button class="btn btn-secondary" onclick="location.reload()">
+                    🔄 Recargar Página
+                </button>
+            </div>
+
+            <div class="loader" id="loader"></div>
+
+            <div class="results" id="results" style="display: none;">
+                <h3>📊 Resultados:</h3>
+                <div id="results-content"></div>
+            </div>
+
+            <div id="mock-manager-container"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { injectHttpMockManagerInline, HTTP_MOCK_MANAGER_SCRIPT } from './lib/index.esm.js';
+
+        // Make functions available globally
+        window.injectHttpMockManagerInline = injectHttpMockManagerInline;
+        window.HTTP_MOCK_MANAGER_SCRIPT = HTTP_MOCK_MANAGER_SCRIPT;
+
+        console.log('✅ Módulo cargado correctamente');
+        console.log('📦 HTTP_MOCK_MANAGER_SCRIPT disponible:', typeof HTTP_MOCK_MANAGER_SCRIPT);
+        console.log('📏 Tamaño del script:', HTTP_MOCK_MANAGER_SCRIPT?.length || 0, 'caracteres');
+    </script>
+
+    <script>
+        function showLoader(show) {
+            const loader = document.getElementById('loader');
+            loader.classList.toggle('active', show);
+        }
+
+        function updateStatus(status, text) {
+            const badge = document.getElementById('status-badge');
+            badge.className = `status-badge ${status}`;
+            badge.textContent = text;
+        }
+
+        function addResult(title, content, isError = false) {
+            const resultsDiv = document.getElementById('results');
+            const resultsContent = document.getElementById('results-content');
+            
+            resultsDiv.style.display = 'block';
+            
+            const resultItem = document.createElement('div');
+            resultItem.className = `result-item ${isError ? 'error' : ''}`;
+            resultItem.innerHTML = `
+                <strong>${isError ? '❌' : '✅'} ${title}</strong>
+                ${content}
+            `;
+            
+            resultsContent.appendChild(resultItem);
+        }
+
+        function clearResults() {
+            const resultsContent = document.getElementById('results-content');
+            resultsContent.innerHTML = '';
+            document.getElementById('results').style.display = 'none';
+        }
+
+        async function runInlineTest() {
+            try {
+                clearResults();
+                showLoader(true);
+                updateStatus('pending', 'Ejecutando...');
+
+                console.log('🚀 Iniciando test de inyección inline...');
+
+                // Verificar que la función esté disponible
+                if (typeof window.injectHttpMockManagerInline !== 'function') {
+                    throw new Error('La función injectHttpMockManagerInline no está disponible');
+                }
+
+                addResult(
+                    'Función disponible',
+                    'La función <code>injectHttpMockManagerInline</code> está cargada correctamente'
+                );
+
+                // Verificar que el script esté disponible
+                if (typeof window.HTTP_MOCK_MANAGER_SCRIPT !== 'string') {
+                    throw new Error('HTTP_MOCK_MANAGER_SCRIPT no está disponible');
+                }
+
+                addResult(
+                    'Script disponible',
+                    `Bundle embebido disponible: <code>${window.HTTP_MOCK_MANAGER_SCRIPT.length.toLocaleString()}</code> caracteres`
+                );
+
+                // Ejecutar la inyección
+                const container = document.getElementById('mock-manager-container');
+                
+                console.log('📦 Inyectando HTTP Mock Manager inline...');
+                await window.injectHttpMockManagerInline(container);
+
+                addResult(
+                    'Inyección completada',
+                    'El método <code>injectHttpMockManagerInline</code> se ejecutó sin errores'
+                );
+
+                // Verificar que el script se haya inyectado
+                const inlineScript = document.querySelector('script[id="http-mock-manager-inline-script"]');
+                if (inlineScript) {
+                    addResult(
+                        'Script inline inyectado',
+                        `Script tag con id <code>http-mock-manager-inline-script</code> encontrado en el DOM`
+                    );
+                } else {
+                    throw new Error('El script inline no se encontró en el DOM');
+                }
+
+                // Verificar que el custom element se haya creado
+                const customElement = container.querySelector('http-mock-manager');
+                if (customElement) {
+                    addResult(
+                        'Custom element creado',
+                        'El elemento <code>&lt;http-mock-manager&gt;</code> fue agregado al contenedor'
+                    );
+                } else {
+                    throw new Error('El custom element no se encontró en el contenedor');
+                }
+
+                // Esperar un momento para que Angular inicialice
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // Verificar si el custom element tiene contenido
+                if (customElement.shadowRoot || customElement.children.length > 0) {
+                    addResult(
+                        'Custom element renderizado',
+                        'El HTTP Mock Manager tiene contenido renderizado'
+                    );
+                } else {
+                    addResult(
+                        'Custom element vacío',
+                        'El elemento existe pero aún no tiene contenido visible (puede estar inicializando)',
+                        false
+                    );
+                }
+
+                updateStatus('success', '✅ Test Exitoso');
+                console.log('✅ Test completado exitosamente');
+
+            } catch (error) {
+                console.error('❌ Error en el test:', error);
+                addResult('Error en el test', error.message, true);
+                updateStatus('error', '❌ Test Fallido');
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        function checkInjection() {
+            clearResults();
+            
+            const inlineScript = document.querySelector('script[id="http-mock-manager-inline-script"]');
+            const container = document.getElementById('mock-manager-container');
+            const customElement = container.querySelector('http-mock-manager');
+
+            if (inlineScript) {
+                addResult(
+                    'Script inline',
+                    `✅ Encontrado en <code>&lt;head&gt;</code> con ${inlineScript.textContent.length.toLocaleString()} caracteres`
+                );
+            } else {
+                addResult('Script inline', '❌ No encontrado en el DOM', true);
+            }
+
+            if (customElement) {
+                const hasContent = customElement.shadowRoot || customElement.children.length > 0;
+                addResult(
+                    'Custom element',
+                    `✅ Encontrado en el contenedor ${hasContent ? 'con contenido' : '(inicializando)'}`
+                );
+            } else {
+                addResult('Custom element', '❌ No encontrado en el contenedor', true);
+            }
+
+            // Verificar la función global
+            if (typeof window.customElements.get('http-mock-manager') === 'function') {
+                addResult(
+                    'Custom element registrado',
+                    '✅ El custom element <code>http-mock-manager</code> está registrado globalmente'
+                );
+            } else {
+                addResult(
+                    'Custom element registrado',
+                    '⚠️ El custom element no está registrado (puede estar cargando)',
+                    false
+                );
+            }
+        }
+
+        function clearTest() {
+            // Remover el script inline
+            const inlineScript = document.querySelector('script[id="http-mock-manager-inline-script"]');
+            if (inlineScript) {
+                inlineScript.remove();
+            }
+
+            // Limpiar el contenedor
+            const container = document.getElementById('mock-manager-container');
+            container.innerHTML = '';
+
+            // Limpiar resultados
+            clearResults();
+            updateStatus('pending', 'Limpiado');
+
+            console.log('🗑️ Test limpiado');
+        }
+
+        // Auto-ejecutar al cargar si hay parámetro en URL
+        if (window.location.search.includes('autorun=true')) {
+            setTimeout(() => runInlineTest(), 500);
+        }
+    </script>
+</body>
+</html>
