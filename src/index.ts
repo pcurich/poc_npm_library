@@ -7,4 +7,5 @@ export { IHttpMockService } from './indexeddb/services/i-http-mock-service';
 export { HttpMockEntity } from './indexeddb/entities/http-mock-entity';
 
 export { createIndexedDbServices, getIndexedDbConfig, createDefaultIndexedDb } from './indexeddb/init/indexeddb-init';
-export {injectHttpMockManager} from './indexeddb/utils/inject-http-mock-manager';
+export { injectHttpMockManagerInline, injectHttpMockManagerFromUrl } from './indexeddb/utils/inject-http-mock-manager';
+export { HTTP_MOCK_MANAGER_SCRIPT } from './indexeddb/utils/http-mock-manager-script';

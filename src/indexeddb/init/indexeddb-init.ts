@@ -7,18 +7,20 @@ import { DBInitOptions, inspectDbStructure, StoreConfig } from '../utils/inspect
  * Genera una función de migración a partir de la configuración de stores.
  */
 function makeMigration(stores: DBInitOptions['stores']): Migration {
+  function createIndexes(store: IDBObjectStore, indexes?: StoreConfig['indexes']) {
+    if (!indexes) return;
+    for (const idx of indexes) {
+      if (!store.indexNames.contains(idx.name)) {
+        store.createIndex(idx.name, idx.keyPath as any, idx.options ?? {});
+      }
+    }
+  }
+
   return (db: IDBDatabase) => {
     for (const s of stores) {
-      if (!db.objectStoreNames.contains(s.name)) {
-        const store = db.createObjectStore(s.name, { keyPath: s.keyPath, autoIncrement: !!s.autoIncrement });
-        if (s.indexes) {
-          for (const idx of s.indexes) {
-            if (!store.indexNames.contains(idx.name)) {
-              store.createIndex(idx.name, idx.keyPath as any, idx.options ?? {});
-            }
-          }
-        }
-      }
+      if (db.objectStoreNames.contains(s.name)) continue;
+      const store = db.createObjectStore(s.name, { keyPath: s.keyPath, autoIncrement: !!s.autoIncrement });
+      createIndexes(store, s.indexes);
     }
   };
 }

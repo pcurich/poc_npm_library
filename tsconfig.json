@@ -11,7 +11,8 @@
     "strict": true,
     "module": "ESNext",
     "sourceMap": true,
-    "noEmit": false
+    "noEmit": false,
+    "skipLibCheck": true
   },
   "include": [
     "src/**/*"
