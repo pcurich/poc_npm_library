@@ -1,6 +1,6 @@
 {
   "name": "@pcurich/client-storage-indexeddb",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "description": "Este paquete es una librería npm que abstrae almacenamiento (IndexedDB).",
   "type": "module",
   "types": "lib/types/index.d.ts",
